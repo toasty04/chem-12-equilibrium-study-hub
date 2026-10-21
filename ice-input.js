@@ -78,5 +78,30 @@
       && Math.abs(parsed.b-coefficient)<=.001;
   }
 
-  window.ICEInput={parseLinear,matchesCell};
+  function significantFigures(raw) {
+    const source=String(raw??'').trim().replace(/[−–—]/g,'-').replace(/\s*M\s*$/i,'');
+    const match=source.match(/^[-+]?((?:\d+(?:\.\d*)?|\.\d+))(?:e[+-]?\d+)?$/i);
+    if (!match) return null;
+    const mantissa=match[1], digits=mantissa.replace('.','');
+    if (!/[1-9]/.test(digits)) return mantissa.includes('.') ? mantissa.split('.')[1].length || 1 : 1;
+    const significant=digits.replace(/^0+/,'');
+    return mantissa.includes('.') ? significant.length : significant.replace(/0+$/,'').length;
+  }
+
+  function finalAnswerStatus(raw, expected, figures) {
+    const source=String(raw??'').trim().replace(/[−–—]/g,'-').replace(/\s*M\s*$/i,'');
+    const suppliedFigures=significantFigures(source), value=Number(source);
+    const target=Number(expected.toPrecision(figures));
+    const targetText=expected.toPrecision(figures);
+    if (suppliedFigures===null || !Number.isFinite(value)) return {status:'invalid',targetText};
+    const place=10 ** (Math.floor(Math.log10(Math.abs(expected)))-figures+1);
+    const tolerance=place/2+Math.max(1e-12,Math.abs(expected)*1e-12);
+    if (Math.abs(value-expected)>tolerance) return {status:'wrong',targetText};
+    if (suppliedFigures!==figures || Math.abs(value-target)>Math.max(1e-12,Math.abs(target)*1e-12)) {
+      return {status:'sigfig',targetText};
+    }
+    return {status:'correct',targetText};
+  }
+
+  window.ICEInput={parseLinear,matchesCell,significantFigures,finalAnswerStatus};
 })();
