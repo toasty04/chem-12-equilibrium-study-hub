@@ -13,14 +13,29 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch{stora
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sci=n=>{if(!Number.isFinite(n))return 'invalid';if(n===0)return '0';const [m,e]=n.toExponential(3).split('e');return `${Number(m)} × 10<sup>${Number(e)}</sup>`;};
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function go(){let id=location.hash.slice(1)||'overview';if(!$(id)?.classList.contains('u3-view'))id='overview';document.querySelectorAll('.u3-view').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('[data-section]').forEach(a=>{a.classList.toggle('active',a.dataset.section===id);if(a.dataset.section===id)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});document.querySelector('.sidebar').classList.remove('open');$('u3-menu').setAttribute('aria-expanded','false');window.scrollTo(0,0);}
+function go(){let id=location.hash.slice(1)||'overview';if(id==='assigned')id='homework';if(!$(id)?.classList.contains('u3-view'))id='overview';document.querySelectorAll('.u3-view').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('[data-section]').forEach(a=>{a.classList.toggle('active',a.dataset.section===id);if(a.dataset.section===id)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});document.querySelector('.sidebar').classList.remove('open');$('u3-menu').setAttribute('aria-expanded','false');window.scrollTo(0,0);}
 window.addEventListener('hashchange',go);
 $('u3-menu').onclick=()=>{const open=document.querySelector('.sidebar').classList.toggle('open');$('u3-menu').setAttribute('aria-expanded',String(open));};
 function progress(){$('u3-progress').textContent=`${U3.notes.filter(n=>state.mastered.includes(n.id)).length} / ${U3.notes.length}`;}
 function notes(){const query=$('u3-search').value.trim().toLowerCase();const selected=U3.notes.filter(n=>`${n.title} ${n.ref} ${n.body}`.toLowerCase().includes(query));$('guide-list').innerHTML=selected.map(n=>`<details class="guide-card" id="note-${n.id}" ${query?'open':''}><summary><span class="step">${n.n}</span><div><h2>${n.title}</h2><small>${n.ref}</small></div></summary><div class="guide-body">${n.body}<label class="master-check"><input type="checkbox" data-master="${n.id}" ${state.mastered.includes(n.id)?'checked':''}> I can explain this topic and solve an example without notes.</label></div></details>`).join('')||'<p class="empty-state">No matching topics. Try “Ksp”, “titration”, or “ions”.</p>';document.querySelectorAll('[data-master]').forEach(c=>c.onchange=()=>{state.mastered=state.mastered.filter(id=>id!==c.dataset.master);if(c.checked)state.mastered.push(c.dataset.master);save();progress();});}
 $('u3-search').oninput=notes;
-function homework(){$('hw-list').innerHTML=U3.homework.map(([id,title,nums,task,note,priority])=>`<label class="hw-row"><input type="checkbox" data-hw="${id}" ${state.homework.includes(id)?'checked':''}><span>${priority?'<span class="priority">TEST PRIORITY</span>':''}<strong>${title}</strong><b>${nums}</b><p>${task}</p><small class="muted">${note}</small></span></label>`).join('');document.querySelectorAll('[data-hw]').forEach(c=>c.onchange=()=>{state.homework=state.homework.filter(id=>id!==c.dataset.hw);if(c.checked)state.homework.push(c.dataset.hw);save();hwCount();});hwCount();}
-function hwCount(){$('hw-progress').textContent=`${U3.homework.filter(x=>state.homework.includes(x[0])).length} / ${U3.homework.length} assignment groups completed.`;}
+function homework() {
+  const boxes = [...document.querySelectorAll('[data-hw]')];
+  function updateCount() {
+    $('hw-progress').textContent = boxes.filter(box => box.checked).length + ' / ' + boxes.length + ' reviewed';
+  }
+  for (const box of boxes) {
+    const id = box.dataset.hw;
+    box.checked = state.homework.includes(id);
+    box.onchange = () => {
+      state.homework = state.homework.filter(saved => saved !== id);
+      if (box.checked) state.homework.push(id);
+      save();
+      updateCount();
+    };
+  }
+  updateCount();
+}
 const known=new Set(U3.mc.map(q=>q.id));
 if(!state.mockIds.length||state.mockIds.some(id=>!known.has(id))||new Set(state.mockIds).size!==state.mockIds.length||(!state.retry&&(state.mockIds.length!==20||state.mockIds.filter(id=>U3.mc.find(q=>q.id===id).tag==='hard').length!==2))){state.mockIds=U3.mc.slice(0,20).map(q=>q.id);state.answers={};state.checked=[];state.submitted=false;state.retry=false;}
 function getMock(){return state.mockIds.map(id=>U3.mc.find(q=>q.id===id));}
